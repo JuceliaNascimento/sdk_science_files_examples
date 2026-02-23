@@ -20,23 +20,14 @@ COLOR_BTN      = "#444444"
 COLOR_ACCENT   = "#007bff"    
 
 PALETTES = {
-    "Jet (Padrão)": cv2.COLORMAP_JET,
     "Ironbow": cv2.COLORMAP_INFERNO,
+    "Jet": cv2.COLORMAP_JET,
     "Lava": cv2.COLORMAP_HOT,
     "Arctic": cv2.COLORMAP_OCEAN,
     "Rainbow": cv2.COLORMAP_RAINBOW,
     "Viridis": cv2.COLORMAP_VIRIDIS,
     "Bone (P&B)": cv2.COLORMAP_BONE,
 }
-
-def resource_path(relative_path):
-    """ Retorna o caminho absoluto para recursos, funcionando em dev e como exe """
-    try:
-        # O PyInstaller cria uma pasta temporária e armazena o caminho em _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
 
 class ThermalProPlayer:
     def __init__(self, root):
@@ -46,7 +37,6 @@ class ThermalProPlayer:
         self.root.configure(bg=COLOR_PANEL)
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_path = resource_path("icone.jpg")
         # Ícone da Janela Principal
         try:
             icon_path = os.path.join(script_dir, "icone.jpg")
