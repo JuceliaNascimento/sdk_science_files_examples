@@ -93,7 +93,7 @@ class InterfaceGrafica(tk.Tk):
         """Gerencia o processo de pedir o arquivo e atualizar a tela."""
         caminho_arquivo = filedialog.askopenfilename(
             title="Selecione o arquivo térmico",
-            filetypes=[("Arquivos ATS", "*.ats"), ("Todos os arquivos", "*.*")]
+            filetypes=[("Arquivos radiométricos", "*.ats *.jpg"), ("Todos os arquivos", "*.*")]
         )
 
         if not caminho_arquivo:
