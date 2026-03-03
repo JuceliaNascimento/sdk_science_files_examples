@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+from PySide6.QtWidgets import (QGroupBox, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QFileDialog, QLabel, QSlider, QMessageBox, QButtonGroup, QMenu, QLineEdit)
 from PySide6.QtCore import Qt, QTimer, QSize, QPoint, QRectF
 from PySide6.QtGui import QImage, QPixmap, QIcon, QPainter, QPen, QColor, QPolygon, QLinearGradient, QPainterPath
@@ -114,6 +114,8 @@ class MainWindow(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self.next_frame)
         self.setup_ui()
+        self.video_widget.pixel_hovered.connect(self.update_cursor_data)
+        self.video_widget.stats_updated.connect(self.update_roi_stats)
 
     def setup_ui(self):
         central_widget = QWidget()
@@ -175,8 +177,41 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(top_layout)
 
-        # --- CENTRO (Vídeo e Colorbar) ---
+        # --- CENTRO  ---
         center_layout = QHBoxLayout()
+
+        #  1. PAINEL LATERAL ESQUERDO (Dados e Estatísticas)
+        side_panel_container = QWidget()
+        side_panel_container.setFixedWidth(180) # Largura fixa para a barra lateral
+        side_layout = QVBoxLayout(side_panel_container)
+        side_layout.setContentsMargins(5, 0, 5, 0)
+        side_layout.setSpacing(15)
+
+        # Grupo: Dados do Cursor (X, Y e Valor)
+        cursor_group = QGroupBox("Cursor Data")
+        cursor_vbox = QVBoxLayout()
+        self.lbl_cursor_pos = QLabel("X: - , Y: -")
+        self.lbl_cursor_val = QLabel("Value: -")
+        cursor_vbox.addWidget(self.lbl_cursor_pos)
+        cursor_vbox.addWidget(self.lbl_cursor_val)
+        cursor_group.setLayout(cursor_vbox)
+        side_layout.addWidget(cursor_group)
+
+        # Grupo: ROI Stats (Média e Desvio Padrão)
+        roi_group = QGroupBox("ROI Statistics")
+        roi_vbox = QVBoxLayout()
+        self.lbl_roi_mean = QLabel("Mean: -")
+        self.lbl_roi_std = QLabel("Std Dev: -")
+        roi_vbox.addWidget(self.lbl_roi_mean)
+        roi_vbox.addWidget(self.lbl_roi_std)
+        roi_group.setLayout(roi_vbox)
+        side_layout.addWidget(roi_group)
+
+        side_layout.addStretch() # Empurra os grupos para o topo
+        center_layout.addWidget(side_panel_container)
+
+            # 2. WIDGET DE VÍDEO NO CENTRO
+
         self.video_widget = ThermalVideoWidget()
         center_layout.addWidget(self.video_widget, stretch=1)
 
@@ -323,3 +358,25 @@ class MainWindow(QMainWindow):
             if path:
                 self.model.export_csv(path)
                 QMessageBox.information(self, "Sucesso", "CSV Exportado com sucesso!")
+
+    def update_cursor_data(self, x, y):
+        # Atualiza as coordenadas na tela
+        self.lbl_cursor_pos.setText(f"X: {x}, Y: {y}")
+        
+        # Busca o valor térmico real no modelo
+        val = self.model.get_value_at(x, y)
+        if val is not None:
+            # Pega a unidade atual (Counts, C, etc) do modelo para exibir
+            unit = getattr(self.model, 'current_unit_label', "")
+            self.lbl_cursor_val.setText(f"Value: {val:.2f} {unit}")
+        else:
+            self.lbl_cursor_val.setText("Value: -")
+
+    def update_roi_stats(self, mean_val, std_val):
+        # Esta função recebe os dois floats emitidos pelo sinal stats_updated
+        if mean_val == 0.0 and std_val == 0.0:
+            self.lbl_roi_mean.setText("Mean: -")
+            self.lbl_roi_std.setText("Std Dev: -")
+        else:
+            self.lbl_roi_mean.setText(f"Mean: {mean_val:.2f}")
+            self.lbl_roi_std.setText(f"Std Dev: {std_val:.2f}")

@@ -68,3 +68,26 @@ class ThermalModel:
     def export_csv(self, file_path):
         if self.raw_data is not None:
             pd.DataFrame(self.raw_data).to_csv(file_path, index=False, header=False)
+
+    def get_value_at(self, x, y):
+        """Retorna o valor térmico exato na coordenada x, y da imagem atual"""
+        if self.raw_data is not None:
+            try:
+                # O numpy usa [linha, coluna], que equivale a [y, x]
+                h, w = self.raw_data.shape
+                if 0 <= x < w and 0 <= y < h:
+                    return float(self.raw_data[y, x])
+            except Exception:
+                return None
+        return None
+
+    # Propriedade auxiliar para saber qual unidade está ativa
+    @property
+    def current_unit_label(self):
+        if not self.im: return ""
+        unit_map = {
+            fnv.Unit.COUNTS: "Counts",
+            fnv.Unit.RADIANCE_FACTORY: "Rad",
+            fnv.Unit.TEMPERATURE_FACTORY: "°C"
+        }
+        return unit_map.get(self.im.unit, "")

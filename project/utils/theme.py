@@ -46,4 +46,20 @@ QCheckBox.ToggleSwitch::indicator {
 }
 QCheckBox.ToggleSwitch::indicator:unchecked { background-color: #aaaaaa; }
 QCheckBox.ToggleSwitch::indicator:checked { background-color: #0e639c; }
+/* Estilização dos títulos dos Grupos Laterais */
+QGroupBox {
+    color: #cccccc;            /* Cor cinza clara para o título */
+    font-weight: bold;
+    border: 1px solid #333333; /* Borda escura suave */
+    margin-top: 10px;          /* Espaço para o título não cortar */
+    padding-top: 15px;         /* Espaço interno superior */
+    border-radius: 4px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left; /* Posição do título */
+    left: 10px;                    /* Afastamento da borda esquerda */
+    padding: 0 3px;
+}
 """
