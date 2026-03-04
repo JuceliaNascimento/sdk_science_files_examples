@@ -8,7 +8,7 @@ from PySide6.QtGui import QImage, QPixmap, QIcon, QPainter, QPen, QColor, QPolyg
 
 from core.thermal_model import ThermalModel
 from ui.video_widget import ThermalVideoWidget
-from ui.dialogs import InfoDialog, ParamsDialog
+from ui.dialogs import InfoDialog, ParamsDialog, CalibrationDialog
 from utils.config import PALETTES
 
 def get_icon(name, color="#aaaaaa", size=24):
@@ -320,8 +320,7 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Open", "", "Files (*.ats *.jpg)")
         if path and self.model.load_file(path):
             self.unit_menu.clear()
-            for u in self.model.get_supported_units():
-                self.unit_menu.addAction(u, lambda unit=u: self.change_unit(unit))
+            self.update_unit_menu()
             self.slider.setEnabled(True)
             self.slider.setMaximum(self.model.num_frames - 1)
             self.current_frame = 0
@@ -436,3 +435,22 @@ class MainWindow(QMainWindow):
             
         # Inicia a animação
         self.panel_animation.start()
+
+    def update_unit_menu(self):
+        self.unit_menu.clear()
+        
+        # Adiciona as unidades normais e as do usuário (se existirem)
+        for u in self.model.get_supported_units():
+            self.unit_menu.addAction(u, lambda unit=u: self.change_unit(unit))
+            
+        self.unit_menu.addSeparator() # Linha divisória
+        
+        # Adiciona o botão de Calibração no final do menu
+        self.unit_menu.addAction("⚙️ Setup User Calibration...", self.open_calibration_dialog)
+
+    def open_calibration_dialog(self):
+        dialog = CalibrationDialog(self.model, self)
+        if dialog.exec(): # Se o usuário clicar em "Save && Apply"
+            self.update_unit_menu() # Recarrega o menu para mostrar a nova unidade
+            if not self.timer.isActive(): 
+                self.update_frame() # Atualiza as cores do vídeo imediatamente

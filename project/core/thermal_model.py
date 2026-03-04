@@ -5,24 +5,38 @@ import numpy as np
 import pandas as pd
 import os
 
+from core.calibration import UserCalibration
+
 class ThermalModel:
     def __init__(self):
         self.im = None
         self.file_name = ""
         self.raw_data = None
         self.num_frames = 0
+        # Instancia a classe de calibração do usuário
+        self.user_cal = UserCalibration()
+        self.active_user_unit = None
 
     def load_file(self, path):
         self.file_name = os.path.splitext(os.path.basename(path))[0]
         self.im = fnv.file.ImagerFile(path)
         self.im.unit = fnv.Unit.COUNTS
         self.num_frames = self.im.num_frames
+        self.active_user_unit = None
         return True
 
     def get_frame_data(self, frame_index):
         if not self.im: return None
         self.im.get_frame(frame_index)
-        self.raw_data = np.array(self.im.final, copy=False).reshape((self.im.height, self.im.width))
+
+        base_data = np.array(self.im.final, copy=False).reshape((self.im.height, self.im.width))
+        if self.active_user_unit == "User_Temp":
+            self.raw_data = self.user_cal.apply(base_data, self.user_cal.temp_coeffs)
+        elif self.active_user_unit == "User_Rad":
+            self.raw_data = self.user_cal.apply(base_data, self.user_cal.rad_coeffs)
+        else:
+            self.raw_data = base_data
+
         return self.raw_data
 
     def get_supported_units(self):
@@ -32,9 +46,19 @@ class ThermalModel:
             fnv.Unit.RADIANCE_FACTORY: "Radiance (Factory)",
             fnv.Unit.TEMPERATURE_FACTORY: "Temperature (Factory)",
         }
-        return [unit_map[u] for u in self.im.supported_units if u in unit_map]
+        
+        units = [unit_map[u] for u in self.im.supported_units if u in unit_map]
+        
+        # Adiciona as opções de usuário caso os coeficientes tenham sido configurados
+        if self.user_cal.has_temp_cal():
+            units.append("Temperature (User)")
+        if self.user_cal.has_rad_cal():
+            units.append("Radiance (User)")
+            
+        return units
 
     def set_unit(self, unit_name):
+        self.active_user_unit = None
         if not self.im: return
         if unit_name == "Counts (Raw)":
             self.im.unit = fnv.Unit.COUNTS
@@ -42,6 +66,12 @@ class ThermalModel:
             self.im.unit = fnv.Unit.TEMPERATURE_FACTORY
         elif unit_name == "Radiance (Factory)":
             self.im.unit = fnv.Unit.RADIANCE_FACTORY
+        elif unit_name == "Temperature (User)":
+            self.im.unit = fnv.Unit.COUNTS  # Força os Counts como base para a conta
+            self.active_user_unit = "User_Temp"
+        elif unit_name == "Radiance (User)":
+            self.im.unit = fnv.Unit.COUNTS
+            self.active_user_unit = "User_Rad"
 
     def get_source_info(self):
         if not self.im: return None
@@ -84,6 +114,10 @@ class ThermalModel:
     # Propriedade auxiliar para saber qual unidade está ativa
     @property
     def current_unit_label(self):
+        if self.active_user_unit == "User_Temp":
+            return "°C (User)"
+        if self.active_user_unit == "User_Rad":
+            return "Rad (User)"
         if not self.im: return ""
         unit_map = {
             fnv.Unit.COUNTS: "Counts",
