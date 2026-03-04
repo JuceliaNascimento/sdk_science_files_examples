@@ -106,7 +106,11 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Thermal Science Files Viewer")
-        self.setWindowIcon(QIcon("icons/icone.ico"))
+
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        icon_path = os.path.join(base_path, "icons", "icone.ico")
+        self.setWindowIcon(QIcon(icon_path))
+
         self.resize(1100, 700)
         self.model = ThermalModel()
         self.current_frame = 0
