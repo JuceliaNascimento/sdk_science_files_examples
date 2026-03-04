@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from PySide6.QtWidgets import (QGroupBox, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QFileDialog, QLabel, QSlider, QMessageBox, QButtonGroup, QMenu, QLineEdit)
-from PySide6.QtCore import Qt, QTimer, QSize, QPoint, QRectF
+from PySide6.QtCore import Qt, QTimer, QSize, QPoint, QRectF, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QImage, QPixmap, QIcon, QPainter, QPen, QColor, QPolygon, QLinearGradient, QPainterPath
 
 from core.thermal_model import ThermalModel
@@ -98,6 +98,14 @@ def get_icon(name, color="#aaaaaa", size=24):
         painter.drawEllipse(3, 6, 18, 12)
     elif name == "rect":
         painter.drawRect(4, 5, 16, 14)
+    elif name == "hamburger":
+        painter.setBrush(Qt.NoBrush)
+        # Define as alturas das 3 linhas
+        y1, y2, y3 = 6, 12, 18
+        # Desenha as 3 linhas da esquerda (x=4) até a direita (x=20)
+        painter.drawLine(4, y1, 20, y1)
+        painter.drawLine(4, y2, 20, y2)
+        painter.drawLine(4, y3, 20, y3)
 
     painter.end()
     return QIcon(pixmap)
@@ -130,6 +138,21 @@ class MainWindow(QMainWindow):
 
         # --- PAINEL SUPERIOR ---
         top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(5, 5, 5, 5) # Pequeno ajuste de margem
+        top_layout.setSpacing(5)
+
+        # CÓDIGO ATUALIZADO DO BOTÃO DE MENU:
+        self.btn_toggle_panel = QPushButton() # Removemos o texto "Menu"
+        self.btn_toggle_panel.setIcon(get_icon("hamburger")) # Definimos o novo ícone
+        self.btn_toggle_panel.setProperty("class", "FlatIcon") # Aplica o estilo transparente/hover
+        self.btn_toggle_panel.setIconSize(QSize(26, 26)) # Tamanho condizente com os outros
+        self.btn_toggle_panel.setToolTip("Mostrar/Esconder Painel Lateral") # Dica ao passar o mouse
+        self.btn_toggle_panel.clicked.connect(self.toggle_side_panel)
+        top_layout.addWidget(self.btn_toggle_panel)
+
+        # Adiciona o separador vertical para organizar visualmente
+        sep_menu = QLabel("│"); sep_menu.setStyleSheet("color: #444; font-size: 18px; margin: 0 5px;")
+        top_layout.addWidget(sep_menu)
         
         btn_open = QPushButton(); btn_open.setIcon(get_icon("folder")); btn_open.setProperty("class", "FlatIcon")
         btn_open.setIconSize(QSize(30, 30))
@@ -185,9 +208,19 @@ class MainWindow(QMainWindow):
         center_layout = QHBoxLayout()
 
         #  1. PAINEL LATERAL ESQUERDO (Dados e Estatísticas)
-        side_panel_container = QWidget()
-        side_panel_container.setFixedWidth(180) # Largura fixa para a barra lateral
-        side_layout = QVBoxLayout(side_panel_container)
+        self.side_panel_container = QWidget()
+        # Definimos o tamanho máximo e mínimo para 0 para ele começar escondido
+        # Se quiser que comece aberto, mude ambos os '0' abaixo para '180'
+        self.side_panel_container.setMaximumWidth(0) 
+        self.side_panel_container.setMinimumWidth(0)
+        self.side_panel_container.setContentsMargins(0, 0, 0, 0)
+
+        # Configuração da Animação
+        self.panel_animation = QPropertyAnimation(self.side_panel_container, b"maximumWidth")
+        self.panel_animation.setDuration(300) # Duração de 300 milissegundos (0.3s)
+        self.panel_animation.setEasingCurve(QEasingCurve.InOutQuart) # Deixa o movimento suave
+
+        side_layout = QVBoxLayout(self.side_panel_container)
         side_layout.setContentsMargins(5, 0, 5, 0)
         side_layout.setSpacing(15)
 
@@ -212,7 +245,7 @@ class MainWindow(QMainWindow):
         side_layout.addWidget(roi_group)
 
         side_layout.addStretch() # Empurra os grupos para o topo
-        center_layout.addWidget(side_panel_container)
+        center_layout.addWidget(self.side_panel_container)
 
             # 2. WIDGET DE VÍDEO NO CENTRO
 
@@ -384,3 +417,22 @@ class MainWindow(QMainWindow):
         else:
             self.lbl_roi_mean.setText(f"Mean: {mean_val:.2f}")
             self.lbl_roi_std.setText(f"Std Dev: {std_val:.2f}")
+
+
+    def toggle_side_panel(self):
+        # Descobre qual é a largura atual do painel
+        width = self.side_panel_container.maximumWidth()
+        
+        if width == 0:
+            # Se está fechado (0), anima até abrir (180)
+            self.panel_animation.setStartValue(0)
+            self.panel_animation.setEndValue(180)
+            self.side_panel_container.setMinimumWidth(180) # Impede que o conteúdo esmague
+        else:
+            # Se está aberto (180), anima até fechar (0)
+            self.panel_animation.setStartValue(180)
+            self.panel_animation.setEndValue(0)
+            self.side_panel_container.setMinimumWidth(0)
+            
+        # Inicia a animação
+        self.panel_animation.start()
