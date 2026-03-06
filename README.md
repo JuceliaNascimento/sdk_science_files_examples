@@ -26,7 +26,7 @@ A arquitetura do projeto foi dividida para separar a lógica de negócio da inte
  ┣ 📜 main.py               # Ponto de entrada (Entry point) do aplicativo
  ┗ 📜 requirements.txt      # Dependências do projeto
 
-## Pré-requisitos
+## **Pré requisitos**
 
 Certifique-se de ter o **Python 3.8+** instalado em sua máquina. 
 
