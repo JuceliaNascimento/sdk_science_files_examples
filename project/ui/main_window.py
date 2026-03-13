@@ -125,6 +125,7 @@ class MainWindow(QMainWindow):
         self.current_palette = PALETTES["Ironbow"]
         self.timer = QTimer()
         self.timer.timeout.connect(self.next_frame)
+        self.auto_scale = True
         self.setup_ui()
         self.video_widget.pixel_hovered.connect(self.update_cursor_data)
         self.video_widget.stats_updated.connect(self.update_roi_stats)
@@ -273,6 +274,7 @@ class MainWindow(QMainWindow):
 
         self.txt_min = QLineEdit("0.0")
         self.txt_min.setFixedWidth(60); self.txt_min.setAlignment(Qt.AlignCenter)
+        self.txt_min.returnPressed.connect(self.apply_custom_limits)
         right_panel.addWidget(self.txt_min, alignment=Qt.AlignCenter)
 
         center_layout.addLayout(right_panel)
@@ -319,6 +321,7 @@ class MainWindow(QMainWindow):
     def open_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open", "", "Files (*.ats *.jpg)")
         if path and self.model.load_file(path):
+            self.auto_scale = True
             self.unit_menu.clear()
             self.update_unit_menu()
             self.slider.setEnabled(True)
@@ -332,11 +335,26 @@ class MainWindow(QMainWindow):
     def update_frame(self):
         data = self.model.get_frame_data(self.current_frame)
         if data is not None:
-            self.video_widget.update_image(data, self.current_palette)
+            # 1. Decide os limites baseado na flag
+            if self.auto_scale:
+                v_min = np.min(data)
+                v_max = np.max(data)
+                self.txt_min.setText(f"{v_min:.1f}")
+                self.txt_max.setText(f"{v_max:.1f}")
+            else:
+                try:
+                    v_min = float(self.txt_min.text())
+                    v_max = float(self.txt_max.text())
+                except ValueError:
+                    v_min = np.min(data)
+                    v_max = np.max(data)
+            
+            # 2. Limita (clip) os dados térmicos aos limites definidos. 
+            # Valores fora da faixa recebem a cor extrema da paleta, gerando a isoterma.
+            display_data = np.clip(data, v_min, v_max)
+
+            self.video_widget.update_image(display_data, self.current_palette)
             self.slider.setValue(self.current_frame)
-            # Atualiza min e max da colorbar automaticamente (opcional)
-            self.txt_max.setText(f"{np.max(data):.1f}")
-            self.txt_min.setText(f"{np.min(data):.1f}")
 
     def next_frame(self):
         if self.model.num_frames > 0:
@@ -454,3 +472,19 @@ class MainWindow(QMainWindow):
             self.update_unit_menu() # Recarrega o menu para mostrar a nova unidade
             if not self.timer.isActive(): 
                 self.update_frame() # Atualiza as cores do vídeo imediatamente
+
+
+    def apply_custom_limits(self):
+        # Se os campos estiverem vazios, volta para escala automática
+        if self.txt_min.text().strip() == "" or self.txt_max.text().strip() == "":
+            self.auto_scale = True
+        else:
+            self.auto_scale = False
+        
+        # Tira o foco (cursor piscando) das caixas de texto
+        self.txt_max.clearFocus()
+        self.txt_min.clearFocus()
+        
+        # Força a atualização do frame se o vídeo estiver pausado
+        if not self.timer.isActive():
+            self.update_frame()
